@@ -1,0 +1,774 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Law firm consultation booking API",
+    "version": "0.1.0-draft",
+    "description": "Draft client-facing contract for an immigration-focused law firm, without city-specific positioning or production defaults. Not frozen or implemented. Staff/admin operations, lawyer roster administration, refund actions and operational tooling require a separate contract increment before launch. No property valuation, document uploads, or automated legal advice. Names, prices, currency support, consultation modes and firm policies need confirmation. All examples are synthetic; no quoted price is a business commitment. HTTPS required in deployment. API responses containing session, intake, booking or payment data use Cache-Control: no-store. Record ownership and staff permissions are enforced server-side, independent of frontend route guards."
+  },
+  "servers": [{"url":"/","description":"Relative draft base; configure environment origin and allowed credentialed browser origins at implementation."}],
+  "tags": [{"name":"Authentication"},{"name":"Profile"},{"name":"Catalogue"},{"name":"Scheduling"},{"name":"Bookings"},{"name":"Payments"}],
+  "x-contract-status": "draft-not-frozen",
+  "security": [{"cookieSession":[]}],
+  "paths": {
+    "/v1/csrf": {
+      "get": {
+        "tags": ["Authentication"],
+        "operationId": "getCsrf",
+        "summary": "Bootstrap a CSRF context",
+        "description": "Public bootstrap for login/registration and other mutations. Bind token to anonymous/session cookie context; use no-store and explicit allowed origins. Fetch again when the session rotates or the token expires.",
+        "security": [],
+        "responses": {
+          "200": {"description":"Successful response.","content":{"application/json":{"schema":{"type":"object","required":["data"],"properties":{"data":{"$ref":"#/components/schemas/CsrfBootstrap"}},"additionalProperties":false}}}},
+          "429": {"$ref":"#/components/responses/Error429"},
+          "503": {"$ref":"#/components/responses/Error503"}
+        }
+      }
+    },
+    "/v1/auth/register": {
+      "post": {
+        "tags": ["Authentication"],
+        "operationId": "register",
+        "summary": "Register a client account",
+        "description": "Creates an unverified client when eligible and schedules verification email. Always return the same generic accepted response for existing/unknown accounts. Role is assigned server-side; no authenticated session until login.",
+        "security": [{"csrfHeader":[]}],
+        "requestBody": {"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RegisterRequest"}}}},
+        "responses": {
+          "202": {"$ref":"#/components/responses/Acknowledged"},
+          "400": {"$ref":"#/components/responses/Error400"},
+          "403": {"$ref":"#/components/responses/Error403"},
+          "422": {"$ref":"#/components/responses/Error422"},
+          "429": {"$ref":"#/components/responses/Error429"},
+          "503": {"$ref":"#/components/responses/Error503"}
+        }
+      }
+    },
+    "/v1/auth/verify-email": {
+      "post": {
+        "tags": ["Authentication"],
+        "operationId": "verifyEmail",
+        "summary": "Verify an email address",
+        "description": "Consumes a single-use verification token. Does not sign the client in automatically.",
+        "security": [{"csrfHeader":[]}],
+        "requestBody": {"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/TokenRequest"}}}},
+        "responses": {
+          "200": {"$ref":"#/components/responses/Acknowledged"},
+          "400": {"$ref":"#/components/responses/Error400"},
+          "403": {"$ref":"#/components/responses/Error403"},
+          "422": {"$ref":"#/components/responses/Error422"},
+          "429": {"$ref":"#/components/responses/Error429"},
+          "503": {"$ref":"#/components/responses/Error503"}
+        }
+      }
+    },
+    "/v1/auth/resend-verification": {
+      "post": {
+        "tags": ["Authentication"],
+        "operationId": "resendVerification",
+        "summary": "Request another verification email",
+        "description": "Generic response whether the address is unknown, verified, or pending verification; throttle delivery.",
+        "security": [{"csrfHeader":[]}],
+        "requestBody": {"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EmailRequest"}}}},
+        "responses": {
+          "202": {"$ref":"#/components/responses/Acknowledged"},
+          "400": {"$ref":"#/components/responses/Error400"},
+          "403": {"$ref":"#/components/responses/Error403"},
+          "422": {"$ref":"#/components/responses/Error422"},
+          "429": {"$ref":"#/components/responses/Error429"},
+          "503": {"$ref":"#/components/responses/Error503"}
+        }
+      }
+    },
+    "/v1/auth/login": {
+      "post": {
+        "tags": ["Authentication"],
+        "operationId": "login",
+        "summary": "Create a cookie session",
+        "description": "Use a generic invalid-credentials error. Rotate session/CSRF identifiers on success. Unverified accounts may view their profile but booking creation returns 403 until verified.",
+        "security": [{"csrfHeader":[]}],
+        "requestBody": {"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/LoginRequest"}}}},
+        "responses": {
+          "200": {"$ref":"#/components/responses/Session"},
+          "400": {"$ref":"#/components/responses/Error400"},
+          "401": {"$ref":"#/components/responses/Error401"},
+          "403": {"$ref":"#/components/responses/Error403"},
+          "422": {"$ref":"#/components/responses/Error422"},
+          "429": {"$ref":"#/components/responses/Error429"},
+          "503": {"$ref":"#/components/responses/Error503"}
+        }
+      }
+    },
+    "/v1/auth/logout": {
+      "post": {
+        "tags": ["Authentication"],
+        "operationId": "logout",
+        "summary": "Invalidate the current session",
+        "description": "Requires a valid CSRF context and is repeatable even after the session has expired. Invalidate the server session and clear cookies. A valid authenticated session is not required and 401 is intentionally omitted; obtain a fresh anonymous CSRF context if needed.",
+        "security": [{"csrfHeader":[]}],
+        "responses": {"200":{"$ref":"#/components/responses/Acknowledged"},"403":{"$ref":"#/components/responses/Error403"},"429":{"$ref":"#/components/responses/Error429"},"503":{"$ref":"#/components/responses/Error503"}}
+      }
+    },
+    "/v1/auth/forgot-password": {
+      "post": {
+        "tags": ["Authentication"],
+        "operationId": "forgotPassword",
+        "summary": "Request password recovery",
+        "description": "Return a generic accepted response and schedule a reset email only where eligible; never disclose account existence.",
+        "security": [{"csrfHeader":[]}],
+        "requestBody": {"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EmailRequest"}}}},
+        "responses": {
+          "202": {"$ref":"#/components/responses/Acknowledged"},
+          "400": {"$ref":"#/components/responses/Error400"},
+          "403": {"$ref":"#/components/responses/Error403"},
+          "422": {"$ref":"#/components/responses/Error422"},
+          "429": {"$ref":"#/components/responses/Error429"},
+          "503": {"$ref":"#/components/responses/Error503"}
+        }
+      }
+    },
+    "/v1/auth/reset-password": {
+      "post": {
+        "tags": ["Authentication"],
+        "operationId": "resetPassword",
+        "summary": "Reset a password",
+        "description": "Consumes the reset token, changes the password and revokes existing sessions. Requires a subsequent login.",
+        "security": [{"csrfHeader":[]}],
+        "requestBody": {"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ResetPasswordRequest"}}}},
+        "responses": {
+          "200": {"$ref":"#/components/responses/Acknowledged"},
+          "400": {"$ref":"#/components/responses/Error400"},
+          "403": {"$ref":"#/components/responses/Error403"},
+          "422": {"$ref":"#/components/responses/Error422"},
+          "429": {"$ref":"#/components/responses/Error429"},
+          "503": {"$ref":"#/components/responses/Error503"}
+        }
+      }
+    },
+    "/v1/me": {
+      "get": {
+        "tags": ["Profile"],
+        "operationId": "getMe",
+        "summary": "Read the current profile",
+        "security": [{"cookieSession":[]}],
+        "responses": {
+          "200": {"description":"Successful response.","content":{"application/json":{"schema":{"type":"object","required":["data"],"properties":{"data":{"$ref":"#/components/schemas/User"}},"additionalProperties":false}}}},
+          "401": {"$ref":"#/components/responses/Error401"},
+          "429": {"$ref":"#/components/responses/Error429"},
+          "503": {"$ref":"#/components/responses/Error503"}
+        }
+      },
+      "patch": {
+        "tags": ["Profile"],
+        "operationId": "updateMe",
+        "summary": "Update allowed profile fields",
+        "description": "Reject role, email, IDs and other server-owned fields. Null phone removes the optional number.",
+        "security": [{"cookieSession":[],"csrfHeader":[]}],
+        "requestBody": {"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ProfilePatch"}}}},
+        "responses": {
+          "200": {"description":"Successful response.","content":{"application/json":{"schema":{"type":"object","required":["data"],"properties":{"data":{"$ref":"#/components/schemas/User"}},"additionalProperties":false}}}},
+          "400": {"$ref":"#/components/responses/Error400"},
+          "401": {"$ref":"#/components/responses/Error401"},
+          "403": {"$ref":"#/components/responses/Error403"},
+          "422": {"$ref":"#/components/responses/Error422"},
+          "429": {"$ref":"#/components/responses/Error429"},
+          "503": {"$ref":"#/components/responses/Error503"}
+        }
+      }
+    },
+    "/v1/topics": {
+      "get": {
+        "tags": ["Catalogue"],
+        "operationId": "listTopics",
+        "summary": "List enabled legal consultation services",
+        "description": "The route retains the term topics; each entry represents a firm-approved service. Only enabled services and approved jurisdiction/language/mode/pricing options are public.",
+        "security": [],
+        "parameters": [{"$ref":"#/components/parameters/Cursor"},{"$ref":"#/components/parameters/Limit"}],
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {"schema":{"type":"object","required":["data","pagination"],"properties":{"data":{"type":"array","items":{"$ref":"#/components/schemas/Topic"}},"pagination":{"$ref":"#/components/schemas/Pagination"}},"additionalProperties":false}}
+            }
+          },
+          "400": {"$ref":"#/components/responses/Error400"},
+          "429": {"$ref":"#/components/responses/Error429"},
+          "503": {"$ref":"#/components/responses/Error503"}
+        }
+      }
+    },
+    "/v1/topics/{topicId}": {
+      "parameters": [{"$ref":"#/components/parameters/TopicId"}],
+      "get": {
+        "tags": ["Catalogue"],
+        "operationId": "getTopic",
+        "summary": "Read an enabled service",
+        "security": [],
+        "responses": {
+          "200": {"description":"Successful response.","content":{"application/json":{"schema":{"type":"object","required":["data"],"properties":{"data":{"$ref":"#/components/schemas/Topic"}},"additionalProperties":false}}}},
+          "404": {"$ref":"#/components/responses/Error404"},
+          "429": {"$ref":"#/components/responses/Error429"},
+          "503": {"$ref":"#/components/responses/Error503"}
+        }
+      }
+    },
+    "/v1/availability": {
+      "get": {
+        "tags": ["Scheduling"],
+        "operationId": "getAvailability",
+        "summary": "Find eligible appointment offers",
+        "description": "Offers are not reservations. Server applies roster eligibility, local-office schedules, holidays, buffer times, lead-time rules and DST. Require from < to and enforce a configured maximum search horizon. Offers are bound to the requested language and consultationMode; booking creation must match those selections.",
+        "security": [],
+        "parameters": [
+          {"name":"topicId","in":"query","required":true,"schema":{"$ref":"#/components/schemas/Id"},"description":"Enabled service."},
+          {"name":"durationMinutes","in":"query","required":true,"schema":{"type":"integer","minimum":1},"description":"One duration supported by the selected service."},
+          {"name":"language","in":"query","required":true,"schema":{"$ref":"#/components/schemas/Language"},"description":"Requested consultation language; eligibility filters the assigned lawyer."},
+          {"name":"consultationMode","in":"query","required":true,"schema":{"$ref":"#/components/schemas/ConsultationMode"},"description":"Requested appointment mode; eligibility is checked for service and lawyer."},
+          {"name":"from","in":"query","required":true,"schema":{"$ref":"#/components/schemas/UtcInstant"},"description":"Inclusive search start instant."},
+          {"name":"to","in":"query","required":true,"schema":{"$ref":"#/components/schemas/UtcInstant"},"description":"Exclusive search end instant."},
+          {"name":"timeZone","in":"query","required":true,"schema":{"$ref":"#/components/schemas/TimeZone"},"description":"Client display timezone; does not change UTC interval meaning."}
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {"schema":{"type":"object","required":["data"],"properties":{"data":{"$ref":"#/components/schemas/Availability"}},"additionalProperties":false},"example":{"data":{"slots":[{"id":"slot_example","lawyerId":"lawyer_example","topicId":"topic_immigration_example","durationMinutes":30,"startAt":"2030-05-15T17:00:00Z","endAt":"2030-05-15T17:30:00Z","expiresAt":"2030-05-01T16:02:00Z"}],"timeZone":"Etc/UTC","generatedAt":"2030-05-01T16:00:00Z"}}}
+            }
+          },
+          "400": {"$ref":"#/components/responses/Error400"},
+          "404": {"$ref":"#/components/responses/Error404"},
+          "422": {"$ref":"#/components/responses/Error422"},
+          "429": {"$ref":"#/components/responses/Error429"},
+          "503": {"$ref":"#/components/responses/Error503"}
+        }
+      }
+    },
+    "/v1/bookings": {
+      "post": {
+        "tags": ["Bookings"],
+        "operationId": "createBooking",
+        "summary": "Reserve a consultation with a payment hold",
+        "description": "Verified clients only. Atomically recheck slot eligibility and all overlapping lawyer intervals, assign the slot's lawyer, persist a server-priced quote, and create pendingPayment with hold expiry. Do not accept client IDs, prices or status. An offer alone does not secure a slot.",
+        "security": [{"cookieSession":[],"csrfHeader":[]}],
+        "parameters": [{"$ref":"#/components/parameters/IdempotencyKey"}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {"schema":{"$ref":"#/components/schemas/CreateBookingRequest"},"example":{"slotId":"slot_example","topicId":"topic_immigration_example","durationMinutes":30,"timeZone":"Etc/UTC","language":"es","consultationMode":"inPerson"}}
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {"schema":{"type":"object","required":["data"],"properties":{"data":{"$ref":"#/components/schemas/Booking"}},"additionalProperties":false},"example":{"data":{"id":"booking_example","clientId":"client_example","lawyerId":"lawyer_example","topicId":"topic_immigration_example","status":"pendingPayment","paymentStatus":"unpaid","refundStatus":"none","startAt":"2030-05-15T17:00:00Z","endAt":"2030-05-15T17:30:00Z","timeZone":"Etc/UTC","language":"es","consultationMode":"inPerson","holdExpiresAt":"2030-05-01T16:10:00Z","quote":{"subtotal":100000,"tax":0,"total":100000,"currency":"usd","pricingVersion":"test-price-v1","expiresAt":"2030-05-01T16:10:00Z"},"intakeStatus":"notSubmitted","version":1,"createdAt":"2030-05-01T16:00:00Z","updatedAt":"2030-05-01T16:00:00Z","resolutionRequired":false}}}
+            }
+          },
+          "400": {"$ref":"#/components/responses/Error400"},
+          "401": {"$ref":"#/components/responses/Error401"},
+          "403": {"$ref":"#/components/responses/Error403"},
+          "404": {"$ref":"#/components/responses/Error404"},
+          "409": {"$ref":"#/components/responses/Error409"},
+          "422": {"$ref":"#/components/responses/Error422"},
+          "429": {"$ref":"#/components/responses/Error429"},
+          "503": {"$ref":"#/components/responses/Error503"}
+        }
+      },
+      "get": {
+        "tags": ["Bookings"],
+        "operationId": "listOwnBookings",
+        "summary": "List the client's own bookings",
+        "description": "Server filters ownership before pagination; no staff-wide listing is implied by this endpoint.",
+        "security": [{"cookieSession":[]}],
+        "parameters": [{"$ref":"#/components/parameters/Cursor"},{"$ref":"#/components/parameters/Limit"},{"name":"status","in":"query","schema":{"$ref":"#/components/schemas/BookingStatus"}}],
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {"schema":{"type":"object","required":["data","pagination"],"properties":{"data":{"type":"array","items":{"$ref":"#/components/schemas/Booking"}},"pagination":{"$ref":"#/components/schemas/Pagination"}},"additionalProperties":false}}
+            }
+          },
+          "400": {"$ref":"#/components/responses/Error400"},
+          "401": {"$ref":"#/components/responses/Error401"},
+          "422": {"$ref":"#/components/responses/Error422"},
+          "429": {"$ref":"#/components/responses/Error429"},
+          "503": {"$ref":"#/components/responses/Error503"}
+        }
+      }
+    },
+    "/v1/bookings/{bookingId}": {
+      "parameters": [{"$ref":"#/components/parameters/BookingId"}],
+      "get": {
+        "tags": ["Bookings"],
+        "operationId": "getOwnBooking",
+        "summary": "Read an owned booking and authoritative status",
+        "description": "Ownership enforced for every request. Client reads this state after provider SDK completion instead of assuming payment succeeded.",
+        "security": [{"cookieSession":[]}],
+        "responses": {"200":{"$ref":"#/components/responses/Booking"},"401":{"$ref":"#/components/responses/Error401"},"404":{"$ref":"#/components/responses/Error404"},"429":{"$ref":"#/components/responses/Error429"},"503":{"$ref":"#/components/responses/Error503"}}
+      }
+    },
+    "/v1/bookings/{bookingId}/intake": {
+      "parameters": [{"$ref":"#/components/parameters/BookingId"}],
+      "put": {
+        "tags": ["Bookings"],
+        "operationId": "putIntake",
+        "summary": "Persist minimal confidential consultation intake",
+        "description": "Owner only; permitted before the configured intake cutoff on pendingPayment or confirmed bookings. Replaces the minimal intake payload. Record versioned consent actor/time server-side. No uploads, identity documents or legal advice are accepted by this contract.",
+        "security": [{"cookieSession":[],"csrfHeader":[]}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref":"#/components/schemas/IntakeInput"},
+              "example": {"summary":"Consulta inicial sobre un servicio migratorio anunciado por el despacho.","preferredLanguage":"es","consents":{"privacyNoticeVersion":"privacy-v1","termsVersion":"terms-v1"}}
+            }
+          }
+        },
+        "responses": {
+          "200": {"description":"Successful response.","content":{"application/json":{"schema":{"type":"object","required":["data"],"properties":{"data":{"$ref":"#/components/schemas/IntakeReceipt"}},"additionalProperties":false}}}},
+          "400": {"$ref":"#/components/responses/Error400"},
+          "401": {"$ref":"#/components/responses/Error401"},
+          "403": {"$ref":"#/components/responses/Error403"},
+          "404": {"$ref":"#/components/responses/Error404"},
+          "409": {"$ref":"#/components/responses/Error409"},
+          "422": {"$ref":"#/components/responses/Error422"},
+          "429": {"$ref":"#/components/responses/Error429"},
+          "503": {"$ref":"#/components/responses/Error503"}
+        }
+      },
+      "get": {
+        "tags": ["Bookings"],
+        "operationId": "getOwnIntake",
+        "summary": "Read the owner's saved intake for resume/prefill",
+        "description": "Account owner only, independently enforced for this sensitive endpoint. Return data:null when no intake has been saved, 404 for a missing/inaccessible booking. Send Cache-Control:no-store and do not log the response.",
+        "security": [{"cookieSession":[]}],
+        "responses": {
+          "200": {"description":"Successful response.","content":{"application/json":{"schema":{"type":"object","required":["data"],"properties":{"data":{"$ref":"#/components/schemas/SavedIntake"}},"additionalProperties":false},"example":{"data":null}}}},
+          "401": {"$ref":"#/components/responses/Error401"},
+          "404": {"$ref":"#/components/responses/Error404"},
+          "429": {"$ref":"#/components/responses/Error429"},
+          "503": {"$ref":"#/components/responses/Error503"}
+        }
+      }
+    },
+    "/v1/bookings/{bookingId}/payment-intents": {
+      "parameters": [{"$ref":"#/components/parameters/BookingId"}],
+      "post": {
+        "tags": ["Payments"],
+        "operationId": "createPaymentIntent",
+        "summary": "Create or reuse the booking's PaymentIntent",
+        "description": "Owner and verified email required. Booking must remain pendingPayment with an active hold, current version, completed required intake and any configured screening satisfied. Use the server quote and reuse a compatible provider intent; never charge from browser-supplied amounts. No confirmation until verified provider state is processed.",
+        "security": [{"cookieSession":[],"csrfHeader":[]}],
+        "parameters": [{"$ref":"#/components/parameters/IdempotencyKey"}],
+        "requestBody": {"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PaymentIntentRequest"},"example":{"bookingVersion":2}}}},
+        "responses": {
+          "200": {"description":"Successful response.","content":{"application/json":{"schema":{"type":"object","required":["data"],"properties":{"data":{"$ref":"#/components/schemas/PaymentIntent"}},"additionalProperties":false}}}},
+          "400": {"$ref":"#/components/responses/Error400"},
+          "401": {"$ref":"#/components/responses/Error401"},
+          "403": {"$ref":"#/components/responses/Error403"},
+          "404": {"$ref":"#/components/responses/Error404"},
+          "409": {"$ref":"#/components/responses/Error409"},
+          "422": {"$ref":"#/components/responses/Error422"},
+          "429": {"$ref":"#/components/responses/Error429"},
+          "503": {"$ref":"#/components/responses/Error503"}
+        }
+      }
+    },
+    "/v1/bookings/{bookingId}/cancel": {
+      "parameters": [{"$ref":"#/components/parameters/BookingId"}],
+      "post": {
+        "tags": ["Bookings"],
+        "operationId": "cancelBooking",
+        "summary": "Cancel an owned eligible booking",
+        "description": "Apply the firm's configured cancellation cutoff and refund policy; no policy is established by this draft. Coordinate cancellation with payment/webhook races and release the appointment interval transactionally. Refund status is independent from booking status. Replay the same idempotency key safely.",
+        "security": [{"cookieSession":[],"csrfHeader":[]}],
+        "parameters": [{"$ref":"#/components/parameters/IdempotencyKey"}],
+        "requestBody": {"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/CancelBookingRequest"},"example":{"reason":"Necesito cambiar mi disponibilidad."}}}},
+        "responses": {
+          "200": {"$ref":"#/components/responses/Booking"},
+          "400": {"$ref":"#/components/responses/Error400"},
+          "401": {"$ref":"#/components/responses/Error401"},
+          "403": {"$ref":"#/components/responses/Error403"},
+          "404": {"$ref":"#/components/responses/Error404"},
+          "409": {"$ref":"#/components/responses/Error409"},
+          "422": {"$ref":"#/components/responses/Error422"},
+          "429": {"$ref":"#/components/responses/Error429"},
+          "503": {"$ref":"#/components/responses/Error503"}
+        }
+      }
+    },
+    "/v1/webhooks/stripe": {
+      "post": {
+        "tags": ["Payments"],
+        "operationId": "receiveStripeWebhook",
+        "summary": "Durably receive a signed Stripe event",
+        "description": "Provider-to-server endpoint; exempt from cookie/CSRF checks, not from signature verification. Verify Stripe-Signature against the raw request bytes, timestamp tolerance, configured endpoint secret and intended account/environment. Persist event ID uniquely before 200, then process idempotently. Reject invalid signatures with 400; return 503 when durable acceptance fails. Duplicate accepted events return 200. Out-of-order or late success must not bypass booking conflicts/expiry; reconcile or send to an operational exception/refund workflow.",
+        "security": [],
+        "parameters": [{"name":"Stripe-Signature","in":"header","required":true,"schema":{"type":"string"}}],
+        "requestBody": {"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/StripeEvent"}}}},
+        "responses": {
+          "200": {"description":"Successful response.","content":{"application/json":{"schema":{"type":"object","required":["data"],"properties":{"data":{"$ref":"#/components/schemas/WebhookReceipt"}},"additionalProperties":false}}}},
+          "400": {"$ref":"#/components/responses/Error400"},
+          "503": {"$ref":"#/components/responses/Error503"}
+        }
+      }
+    },
+    "/v1/lawyers/{lawyerId}": {
+      "parameters": [{"name":"lawyerId","in":"path","required":true,"schema":{"$ref":"#/components/schemas/Id"}}],
+      "get": {
+        "tags": ["Catalogue"],
+        "operationId": "getLawyerSummary",
+        "summary": "Read an approved public lawyer summary",
+        "description": "Resolve lawyerId from an availability offer or booking to display the firm's approved professional name, credentials and languages. Only public approved profiles are returned.",
+        "security": [],
+        "responses": {
+          "200": {"description":"Successful response.","content":{"application/json":{"schema":{"type":"object","required":["data"],"properties":{"data":{"$ref":"#/components/schemas/LawyerSummary"}},"additionalProperties":false}}}},
+          "404": {"$ref":"#/components/responses/Error404"},
+          "429": {"$ref":"#/components/responses/Error429"},
+          "503": {"$ref":"#/components/responses/Error503"}
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "cookieSession": {"type":"apiKey","in":"cookie","name":"session","description":"Opaque server session in an HttpOnly, Secure cookie. No bearer tokens in browser storage. SameSite and CORS policy must match deployment origins."},
+      "csrfHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-CSRF-Token",
+        "description": "Required on every browser mutation including registration/login/logout/recovery. Obtain via GET /v1/csrf and refresh after session rotation. Independently validate the allowed request origin."
+      }
+    },
+    "parameters": {
+      "BookingId": {"name":"bookingId","in":"path","required":true,"schema":{"$ref":"#/components/schemas/Id"}},
+      "TopicId": {"name":"topicId","in":"path","required":true,"schema":{"$ref":"#/components/schemas/Id"}},
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": {"type":"string","minLength":8,"maxLength":128},
+        "description": "Client-generated key scoped to authenticated principal and operation; same key/body replays the original result, conflicting body returns 409."
+      },
+      "Cursor": {"name":"cursor","in":"query","schema":{"type":"string"},"description":"Opaque cursor from the preceding list response."},
+      "Limit": {"name":"limit","in":"query","schema":{"type":"integer","minimum":1,"maximum":100,"default":20}}
+    },
+    "responses": {
+      "Error400": {"description":"Malformed request, invalid cursor, expired/invalid verification token, or invalid webhook signature.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}},
+      "Error401": {"description":"Authentication required or credentials/session invalid.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}},
+      "Error403": {"description":"CSRF validation failed, email verification required, or action is not permitted.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}},
+      "Error404": {"description":"Resource not found or not visible to the authenticated principal; ownership must not be disclosed.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}},
+      "Error409": {
+        "description": "Slot conflict, stale booking version, invalid state transition, or idempotency key reused with a different body.",
+        "content": {"application/json":{"schema":{"$ref":"#/components/schemas/Error"},"example":{"error":{"code":"SLOT_UNAVAILABLE","message":"The selected appointment is no longer available.","requestId":"req_example"}}}}
+      },
+      "Error422": {"description":"Field validation failed, unsupported service/duration/locale/mode combination, or business policy prohibits the action.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}},
+      "Error429": {
+        "description": "Rate limit exceeded. Retry-After indicates the retry delay.",
+        "content": {"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}},
+        "headers": {"Retry-After":{"description":"Seconds before another attempt when available.","schema":{"type":"integer","minimum":1}}}
+      },
+      "Error503": {
+        "description": "Temporary dependency or service failure. Retry safely using the original idempotency key where required.",
+        "content": {"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}},
+        "headers": {"Retry-After":{"description":"Seconds before another attempt when available.","schema":{"type":"integer","minimum":1}}}
+      },
+      "Acknowledged": {
+        "description": "Accepted. Authentication/recovery flows use a generic response to avoid account enumeration.",
+        "content": {"application/json":{"schema":{"type":"object","required":["data"],"properties":{"data":{"$ref":"#/components/schemas/Acknowledgement"}},"additionalProperties":false}}}
+      },
+      "Session": {
+        "description": "Session established. Set an HttpOnly, Secure cookie and rotate CSRF/session identifiers; do not return a bearer token.",
+        "headers": {"Set-Cookie":{"description":"Session cookie; SameSite policy and allowed credentialed origins must be configured together.","schema":{"type":"string"}}},
+        "content": {"application/json":{"schema":{"type":"object","required":["data"],"properties":{"data":{"$ref":"#/components/schemas/Session"}},"additionalProperties":false}}}
+      },
+      "Booking": {"description":"Successful response.","content":{"application/json":{"schema":{"type":"object","required":["data"],"properties":{"data":{"$ref":"#/components/schemas/Booking"}},"additionalProperties":false}}}}
+    },
+    "schemas": {
+      "Id": {"type":"string","description":"Opaque server-generated identifier.","minLength":1,"maxLength":128},
+      "UtcInstant": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Valid RFC 3339 UTC instant ending in Z, with seconds and optional fractional seconds. Offset-form inputs must be converted to UTC by the client; server validates calendar/time values in addition to this pattern.",
+        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?Z$"
+      },
+      "TimeZone": {"type":"string","description":"Valid IANA timezone validated by the server. Each office/lawyer schedule requires an explicitly configured timezone; there is no location-based production default. The example is synthetic. UTC offsets alone are not accepted.","example":"Etc/UTC"},
+      "Language": {"type":"string","enum":["es","en"]},
+      "ConsultationMode": {"type":"string","enum":["inPerson","video","phone"]},
+      "Currency": {"type":"string","pattern":"^[a-z]{3}$","example":"usd","description":"Lowercase three-letter ISO 4217 currency code; the server accepts only firm-configured currencies supported by the payment provider. Syntax alone does not imply a valid or enabled currency. Examples are synthetic, not production defaults. Use the currency-specific minor-unit scale."},
+      "Role": {"type":"string","enum":["client","lawyer","admin"]},
+      "BookingStatus": {"type":"string","enum":["pendingPayment","confirmed","completed","noShow","cancelled","expired"]},
+      "PaymentStatus": {"type":"string","enum":["unpaid","requiresAction","processing","succeeded","failed","cancelled"]},
+      "RefundStatus": {"type":"string","enum":["none","pending","partial","refunded","failed"]},
+      "FieldError": {
+        "type": "object",
+        "required": ["field","code","message"],
+        "properties": {"field":{"type":"string","description":"camelCase field path."},"code":{"type":"string","description":"Stable machine-readable validation code."},"message":{"type":"string","description":"Safe display message."}},
+        "additionalProperties": false
+      },
+      "Error": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": ["code","message","requestId"],
+            "properties": {
+              "code": {"type":"string","description":"Stable machine-readable error code."},
+              "message": {"type":"string","description":"Safe display message."},
+              "requestId": {"type":"string","description":"Correlation identifier without confidential matter details."},
+              "fieldErrors": {"type":"array","items":{"$ref":"#/components/schemas/FieldError"}}
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "Acknowledgement": {"type":"object","required":["accepted"],"properties":{"accepted":{"type":"boolean","enum":[true]}},"additionalProperties":false},
+      "Pagination": {"type":"object","required":["nextCursor"],"properties":{"nextCursor":{"type":"string","nullable":true,"description":"Opaque cursor; null when there are no more results."}},"additionalProperties":false},
+      "CsrfBootstrap": {
+        "type": "object",
+        "required": ["csrfToken","expiresAt"],
+        "properties": {"csrfToken":{"type":"string","description":"CSRF token bound to the anonymous/session context. Hold in memory; do not log."},"expiresAt":{"$ref":"#/components/schemas/UtcInstant"}},
+        "additionalProperties": false
+      },
+      "User": {
+        "type": "object",
+        "required": ["id","email","emailVerified","givenName","familyName","phone","preferredLanguage","timeZone","role","createdAt","updatedAt"],
+        "properties": {
+          "id": {"$ref":"#/components/schemas/Id"},
+          "email": {"type":"string","format":"email"},
+          "emailVerified": {"type":"boolean"},
+          "givenName": {"type":"string","description":"Client's given name."},
+          "familyName": {"type":"string","description":"Client's family name."},
+          "phone": {"type":"string","nullable":true,"description":"E.164 format if supplied; never infer country from office location."},
+          "preferredLanguage": {"$ref":"#/components/schemas/Language"},
+          "timeZone": {"$ref":"#/components/schemas/TimeZone"},
+          "role": {"$ref":"#/components/schemas/Role"},
+          "createdAt": {"$ref":"#/components/schemas/UtcInstant"},
+          "updatedAt": {"$ref":"#/components/schemas/UtcInstant"}
+        },
+        "additionalProperties": false
+      },
+      "Session": {
+        "type": "object",
+        "required": ["user","csrfToken","expiresAt"],
+        "properties": {"user":{"$ref":"#/components/schemas/User"},"csrfToken":{"type":"string","description":"New CSRF token after authentication/session rotation."},"expiresAt":{"$ref":"#/components/schemas/UtcInstant"}},
+        "additionalProperties": false
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "required": ["email","password","givenName","familyName","preferredLanguage","timeZone","consents"],
+        "properties": {
+          "email": {"type":"string","format":"email","maxLength":254},
+          "password": {"type":"string","description":"Password policy is enforced server-side; example minimum is a draft policy.","minLength":12,"maxLength":128},
+          "givenName": {"type":"string","minLength":1,"maxLength":100},
+          "familyName": {"type":"string","minLength":1,"maxLength":100},
+          "preferredLanguage": {"$ref":"#/components/schemas/Language"},
+          "timeZone": {"$ref":"#/components/schemas/TimeZone"},
+          "consents": {"$ref":"#/components/schemas/ConsentInput"}
+        },
+        "additionalProperties": false
+      },
+      "EmailRequest": {"type":"object","required":["email"],"properties":{"email":{"type":"string","format":"email","maxLength":254}},"additionalProperties":false},
+      "TokenRequest": {"type":"object","required":["token"],"properties":{"token":{"type":"string","description":"Single-use, expiring verification token; never log.","minLength":1}},"additionalProperties":false},
+      "LoginRequest": {"type":"object","required":["email","password"],"properties":{"email":{"type":"string","format":"email"},"password":{"type":"string","minLength":1,"maxLength":128}},"additionalProperties":false},
+      "ResetPasswordRequest": {
+        "type": "object",
+        "required": ["token","newPassword"],
+        "properties": {"token":{"type":"string","description":"Single-use, expiring reset token; never log.","minLength":1},"newPassword":{"type":"string","minLength":12,"maxLength":128}},
+        "additionalProperties": false
+      },
+      "ProfilePatch": {
+        "type": "object",
+        "properties": {
+          "givenName": {"type":"string","minLength":1,"maxLength":100},
+          "familyName": {"type":"string","minLength":1,"maxLength":100},
+          "phone": {"type":"string","nullable":true,"pattern":"^\\+[1-9][0-9]{6,14}$"},
+          "preferredLanguage": {"$ref":"#/components/schemas/Language"},
+          "timeZone": {"$ref":"#/components/schemas/TimeZone"}
+        },
+        "additionalProperties": false,
+        "minProperties": 1,
+        "description": "Email and role cannot be changed through this endpoint."
+      },
+      "Money": {
+        "type": "object",
+        "required": ["amount","currency"],
+        "properties": {"amount":{"type":"integer","minimum":0,"description":"Integer minor units; never floating-point major-unit amounts."},"currency":{"$ref":"#/components/schemas/Currency"}},
+        "additionalProperties": false
+      },
+      "ServicePrice": {"type":"object","required":["durationMinutes","price"],"properties":{"durationMinutes":{"type":"integer","minimum":1},"price":{"$ref":"#/components/schemas/Money"}},"additionalProperties":false},
+      "Topic": {
+        "type": "object",
+        "required": ["id","slug","name","description","jurisdictions","durationMinutesOptions","languages","consultationModes","prices","active"],
+        "properties": {
+          "id": {"$ref":"#/components/schemas/Id"},
+          "slug": {"type":"string","minLength":1},
+          "name": {"type":"object","required":["es","en"],"properties":{"es":{"type":"string"},"en":{"type":"string"}},"additionalProperties":false},
+          "description": {"type":"object","required":["es","en"],"properties":{"es":{"type":"string"},"en":{"type":"string"}},"additionalProperties":false},
+          "jurisdictions": {"type":"array","items":{"type":"string","description":"Firm-approved jurisdiction label; immigration services do not imply authorization in an unspecified jurisdiction."}},
+          "durationMinutesOptions": {"type":"array","minItems":1,"uniqueItems":true,"items":{"type":"integer","minimum":1}},
+          "languages": {"type":"array","minItems":1,"items":{"$ref":"#/components/schemas/Language"}},
+          "consultationModes": {"type":"array","minItems":1,"items":{"$ref":"#/components/schemas/ConsultationMode"}},
+          "prices": {"type":"array","items":{"$ref":"#/components/schemas/ServicePrice"}},
+          "active": {"type":"boolean"}
+        },
+        "additionalProperties": false
+      },
+      "Slot": {
+        "type": "object",
+        "required": ["id","lawyerId","topicId","durationMinutes","startAt","endAt","expiresAt"],
+        "properties": {
+          "id": {"$ref":"#/components/schemas/Id"},
+          "lawyerId": {"$ref":"#/components/schemas/Id"},
+          "topicId": {"$ref":"#/components/schemas/Id"},
+          "durationMinutes": {"type":"integer","minimum":1},
+          "startAt": {"$ref":"#/components/schemas/UtcInstant"},
+          "endAt": {"$ref":"#/components/schemas/UtcInstant"},
+          "expiresAt": {"type":"string","format":"date-time","description":"Expiry of this availability offer, not a reservation. Booking creation rechecks conflicts and eligibility.","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?Z$"}
+        },
+        "additionalProperties": false
+      },
+      "Availability": {
+        "type": "object",
+        "required": ["slots","timeZone","generatedAt"],
+        "properties": {"slots":{"type":"array","items":{"$ref":"#/components/schemas/Slot"}},"timeZone":{"$ref":"#/components/schemas/TimeZone"},"generatedAt":{"$ref":"#/components/schemas/UtcInstant"}},
+        "additionalProperties": false
+      },
+      "CreateBookingRequest": {
+        "type": "object",
+        "required": ["slotId","topicId","durationMinutes","timeZone","language","consultationMode"],
+        "properties": {
+          "slotId": {"$ref":"#/components/schemas/Id"},
+          "topicId": {"$ref":"#/components/schemas/Id"},
+          "durationMinutes": {"type":"integer","minimum":1},
+          "timeZone": {"$ref":"#/components/schemas/TimeZone"},
+          "language": {"$ref":"#/components/schemas/Language"},
+          "consultationMode": {"$ref":"#/components/schemas/ConsultationMode"}
+        },
+        "additionalProperties": false
+      },
+      "Quote": {
+        "type": "object",
+        "required": ["subtotal","tax","total","currency","pricingVersion","expiresAt"],
+        "properties": {
+          "subtotal": {"type":"integer","minimum":0},
+          "tax": {"type":"integer","minimum":0},
+          "total": {"type":"integer","minimum":0},
+          "currency": {"$ref":"#/components/schemas/Currency"},
+          "pricingVersion": {"type":"string"},
+          "expiresAt": {"$ref":"#/components/schemas/UtcInstant"}
+        },
+        "additionalProperties": false,
+        "description": "Server-issued immutable booking price snapshot in integer minor units; total = subtotal + tax. Tax treatment is configured, not assumed."
+      },
+      "Booking": {
+        "type": "object",
+        "required": ["id","clientId","lawyerId","topicId","status","paymentStatus","refundStatus","startAt","endAt","timeZone","language","consultationMode","holdExpiresAt","quote","intakeStatus","version","createdAt","updatedAt","resolutionRequired"],
+        "properties": {
+          "id": {"$ref":"#/components/schemas/Id"},
+          "clientId": {"$ref":"#/components/schemas/Id"},
+          "lawyerId": {"$ref":"#/components/schemas/Id"},
+          "topicId": {"$ref":"#/components/schemas/Id"},
+          "status": {"$ref":"#/components/schemas/BookingStatus"},
+          "paymentStatus": {"$ref":"#/components/schemas/PaymentStatus"},
+          "refundStatus": {"$ref":"#/components/schemas/RefundStatus"},
+          "startAt": {"$ref":"#/components/schemas/UtcInstant"},
+          "endAt": {"$ref":"#/components/schemas/UtcInstant"},
+          "timeZone": {"$ref":"#/components/schemas/TimeZone"},
+          "language": {"$ref":"#/components/schemas/Language"},
+          "consultationMode": {"$ref":"#/components/schemas/ConsultationMode"},
+          "holdExpiresAt": {"type":"string","format":"date-time","description":"RFC 3339 UTC instant; serialize with Z.","nullable":true,"pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?Z$"},
+          "quote": {"$ref":"#/components/schemas/Quote"},
+          "intakeStatus": {"type":"string","enum":["notSubmitted","submitted"]},
+          "version": {"type":"integer","minimum":1},
+          "createdAt": {"$ref":"#/components/schemas/UtcInstant"},
+          "updatedAt": {"$ref":"#/components/schemas/UtcInstant"},
+          "resolutionRequired": {"type":"boolean","description":"True when late payment, refund failure or another payment/booking mismatch needs staff resolution. Client UI must show a pending-resolution message, not assume an appointment is confirmed."}
+        },
+        "additionalProperties": false,
+        "description": "Customer-safe booking view. Does not include legal intake text, private lawyer notes or other customers' information. Status is authoritative server state."
+      },
+      "ConsentInput": {
+        "type": "object",
+        "required": ["privacyNoticeVersion","termsVersion"],
+        "properties": {"privacyNoticeVersion":{"type":"string","minLength":1},"termsVersion":{"type":"string","minLength":1}},
+        "additionalProperties": false,
+        "description": "Acceptance of configured notice versions for this workflow; server records actor/time. Marketing consent is not bundled."
+      },
+      "IntakeInput": {
+        "type": "object",
+        "required": ["preferredLanguage","consents"],
+        "properties": {
+          "summary": {"type":"string","description":"Optional brief consultation purpose, not a full case file. Plain text; avoid unnecessary sensitive identifiers.","maxLength":2000},
+          "preferredLanguage": {"$ref":"#/components/schemas/Language"},
+          "consents": {"$ref":"#/components/schemas/ConsentInput"}
+        },
+        "additionalProperties": false
+      },
+      "IntakeReceipt": {
+        "type": "object",
+        "required": ["bookingId","status","submittedAt","bookingVersion"],
+        "properties": {"bookingId":{"$ref":"#/components/schemas/Id"},"status":{"type":"string","enum":["submitted"]},"submittedAt":{"$ref":"#/components/schemas/UtcInstant"},"bookingVersion":{"type":"integer","minimum":1}},
+        "additionalProperties": false,
+        "description": "Acknowledges persistence without echoing confidential intake."
+      },
+      "PaymentIntentRequest": {"type":"object","required":["bookingVersion"],"properties":{"bookingVersion":{"type":"integer","minimum":1}},"additionalProperties":false,"description":"No price, currency, customer ID or Stripe secret is accepted from the client."},
+      "PaymentIntent": {
+        "type": "object",
+        "required": ["bookingId","paymentId","provider","clientSecret","amount","currency","paymentStatus","bookingVersion"],
+        "properties": {
+          "bookingId": {"$ref":"#/components/schemas/Id"},
+          "paymentId": {"$ref":"#/components/schemas/Id"},
+          "provider": {"type":"string","enum":["stripe"]},
+          "clientSecret": {"type":"string","description":"Sensitive provider client secret for this owner/booking only. Never log, cache publicly, or persist in URLs."},
+          "amount": {"type":"integer","minimum":0},
+          "currency": {"$ref":"#/components/schemas/Currency"},
+          "paymentStatus": {"$ref":"#/components/schemas/PaymentStatus"},
+          "bookingVersion": {"type":"integer","minimum":1}
+        },
+        "additionalProperties": false,
+        "description": "Creates or reuses a compatible PaymentIntent for the active booking. SDK completion is not proof that the booking is confirmed."
+      },
+      "CancelBookingRequest": {"type":"object","properties":{"reason":{"type":"string","maxLength":500,"description":"Optional plain-text cancellation reason; avoid case details."}},"additionalProperties":false},
+      "StripeEvent": {
+        "type": "object",
+        "required": ["id","type","data"],
+        "properties": {"id":{"type":"string"},"type":{"type":"string"},"data":{"type":"object","additionalProperties":true}},
+        "additionalProperties": true,
+        "description": "Provider event envelope only; verify the raw, unmodified body signature and supported Stripe API version before processing."
+      },
+      "WebhookReceipt": {"type":"object","required":["received"],"properties":{"received":{"type":"boolean","enum":[true]}},"additionalProperties":false},
+      "SavedIntake": {
+        "type": "object",
+        "required": ["bookingId","preferredLanguage","consents","submittedAt","updatedAt","bookingVersion"],
+        "properties": {
+          "summary": {"type":"string","description":"Optional brief consultation purpose, not a full case file. Plain text; avoid unnecessary sensitive identifiers.","maxLength":2000},
+          "preferredLanguage": {"$ref":"#/components/schemas/Language"},
+          "consents": {"$ref":"#/components/schemas/ConsentInput"},
+          "bookingId": {"$ref":"#/components/schemas/Id"},
+          "submittedAt": {"$ref":"#/components/schemas/UtcInstant"},
+          "updatedAt": {"$ref":"#/components/schemas/UtcInstant"},
+          "bookingVersion": {"type":"integer","minimum":1}
+        },
+        "additionalProperties": false,
+        "nullable": true,
+        "description": "Owner's current saved intake; null when none exists. Sensitive: Cache-Control no-store. Previously accepted notice versions are metadata, not automatic acceptance of a new notice."
+      },
+      "LawyerSummary": {
+        "type": "object",
+        "required": ["id","displayName","professionalTitle","credentials","languages","topicIds","consultationModes"],
+        "properties": {
+          "id": {"$ref":"#/components/schemas/Id"},
+          "displayName": {"type":"string"},
+          "professionalTitle": {"type":"string"},
+          "credentials": {"type":"array","items":{"type":"object","required":["label","jurisdiction"],"properties":{"label":{"type":"string"},"jurisdiction":{"type":"string"},"publicRegistrationNumber":{"type":"string","nullable":true}},"additionalProperties":false}},
+          "languages": {"type":"array","items":{"$ref":"#/components/schemas/Language"}},
+          "topicIds": {"type":"array","items":{"$ref":"#/components/schemas/Id"}},
+          "consultationModes": {"type":"array","items":{"$ref":"#/components/schemas/ConsultationMode"}}
+        },
+        "additionalProperties": false,
+        "description": "Firm-approved public professional profile only; no private account contacts, schedules or internal case data. The firm verifies credentials and permitted jurisdictions before publication."
+      }
+    }
+  }
+}

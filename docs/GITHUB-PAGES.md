@@ -23,3 +23,7 @@ Run `npm run build:pages` and `npm run test:pages` locally. The Pages-specific b
 The default local Pages base is `/linde-web/`; override `PAGES_BASE_PATH` when using another repository or a custom domain. `PAGES_SITE_URL` optionally supplies the absolute social-image URL.
 
 References: [Vite static deployment](https://vite.dev/guide/static-deploy.html#github-pages), [GitHub Pages custom workflows](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages).
+
+## Published destination
+
+Repository: [DonytXz/linde-web](https://github.com/DonytXz/linde-web). Site: [Linde](https://donatoalvarez.dev/linde-web/). GitHub Pages inherits the account's existing custom domain, donatoalvarez.dev. HTTPS is enforced for this repository; the account's domain and DNS configuration were not changed.

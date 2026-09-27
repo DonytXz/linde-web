@@ -2,7 +2,7 @@
 
 Bilingual immigration and law firm consultation booking frontend. Spanish and English, with no city-specific positioning. This repository contains the client application and the documentation for a separately implemented API. **There is no backend server in this project.**
 
-[Production website](https://donytxz.github.io/linde-web/) · [GitHub repository](https://github.com/DonytXz/linde-web)
+[Production website](https://donatoalvarez.dev/linde-web/) · [GitHub repository](https://github.com/DonytXz/linde-web)
 
 ## Run locally
 

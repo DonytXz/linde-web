@@ -27,3 +27,7 @@ The original remote is not deleted, force-pushed or renamed. Remote hosting name
 ## Scope boundary
 
 No backend implementation, server deployment, production data migration, mail delivery, live charge or domain cutover is included. Backend Markdown and the OpenAPI draft are the handoff for the owner's independent API project. The protected staff page is a placeholder for a later operational contract/UI increment.
+
+## Subsequent publication
+
+The owner subsequently requested a push to GitHub and verification of GitHub Pages, and explicitly selected a public repository. The new destination is [DonytXz/linde-web](https://github.com/DonytXz/linde-web); it receives only the fresh Linde history. The original legacy remote remains untouched. See [GitHub Pages](GITHUB-PAGES.md) for the deployment workflow.

@@ -78,7 +78,7 @@ export default function Home() {
           <div className="hero-art-frame">
             <img
               className="hero-art"
-              src="/brand/pathway.svg"
+              src={`${import.meta.env.BASE_URL}brand/pathway.svg`}
               width="600"
               height="650"
               alt={t("heroArt")}

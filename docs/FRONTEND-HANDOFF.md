@@ -48,7 +48,7 @@ Connect the real API and run its integration tests for concurrent slot contentio
 
 Supply firm identity, operator contact details, licensed lawyer profiles, approved services/jurisdictions, prices, policies and customer-support instructions. The contact page is currently a neutral routing page; it does not invent a phone number or submit an unimplemented contact form. Demo services and people are labeled synthetic and do not ship in production.
 
-Configure hosting SPA fallbacks, HTTPS, API CORS/cookies and security headers. `vercel.json` supplies a Vite output configuration and SPA rewrite if that host is chosen. No hosting account, domain, deployment or remote repository was changed. Set the final absolute social-image URL in `index.html` after the domain is selected; add localized/prerendered public metadata if search indexing is a launch priority. The current app is a client-rendered SPA.
+Configure hosting SPA fallbacks, HTTPS, API CORS/cookies and security headers. `vercel.json` supplies a Vite output configuration and SPA rewrite if that host is chosen. The initial frontend delivery changed no hosting account or remote. The subsequent GitHub Pages setup is documented in [GitHub Pages](GITHUB-PAGES.md). Set the final absolute social-image URL in `index.html` after the domain is selected; add localized/prerendered public metadata if search indexing is a launch priority. The current app is a client-rendered SPA.
 
 ## Validation
 

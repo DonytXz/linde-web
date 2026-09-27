@@ -2,6 +2,8 @@
 
 Bilingual immigration and law firm consultation booking frontend. Spanish and English, with no city-specific positioning. This repository contains the client application and the documentation for a separately implemented API. **There is no backend server in this project.**
 
+[Production website](https://donytxz.github.io/linde-web/) · [GitHub repository](https://github.com/DonytXz/linde-web)
+
 ## Run locally
 
 Use Node.js 22.12+ and npm. Install with `npm ci`, then run `npm run dev` and open <http://127.0.0.1:5178>.
@@ -36,6 +38,6 @@ Browser tests use installed Google Chrome. They cover the synthetic bilingual bo
 - [Migration record](docs/MIGRATION-RECORD.md): preserved legacy source, local history reset and repository boundaries.
 - [Original redesign package](docs/redesign/README.md): product decisions and historical inventory.
 
-The new identity is Linde; package and local repository name are `linde-web`. No domain or trademark availability is asserted. Firm details, credentials, service catalogue, commercial rules and reviewed policies must be supplied before public release. Hosting and remote repository creation are not part of this local delivery.
+The new identity is Linde; package and local repository name are `linde-web`. No domain or trademark availability is asserted. Firm details, credentials, service catalogue, commercial rules and reviewed policies must be supplied before public release. The public repository is [DonytXz/linde-web](https://github.com/DonytXz/linde-web). GitHub Pages deployment and API configuration are documented in [GitHub Pages](docs/GITHUB-PAGES.md).
 
 Original applicable MIT attribution remains in [LICENSE](LICENSE). Font licenses ship in [public/brand/licenses](public/brand/licenses).

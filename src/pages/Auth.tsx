@@ -91,7 +91,12 @@ export default function AuthPage({ kind }: { kind: Kind }) {
           <br />
           <em>{t("heroEmphasis")}</em>
         </h2>
-        <img src="/brand/pathway.svg" alt="" width="600" height="650" />
+        <img
+          src={`${import.meta.env.BASE_URL}brand/pathway.svg`}
+          alt=""
+          width="600"
+          height="650"
+        />
         <p>{t("heroNote")}</p>
       </aside>
       <section className="auth-form-wrap" key={kind}>

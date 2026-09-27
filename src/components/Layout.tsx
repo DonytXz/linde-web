@@ -27,7 +27,16 @@ export default function Layout() {
   }
   return (
     <>
-      <a className="skip-link" href="#main">
+      <a
+        className="skip-link"
+        href="#main"
+        onClick={(event) => {
+          event.preventDefault();
+          const main = document.getElementById("main");
+          main?.focus();
+          main?.scrollIntoView();
+        }}
+      >
         {t("skip")}
       </a>
       {isDemo && <div className="demo-banner">{t("demo")}</div>}
@@ -110,7 +119,7 @@ export default function Layout() {
           <ErrorNotice error={error} />
         </div>
       )}
-      <main id="main">
+      <main id="main" tabIndex={-1}>
         <Outlet />
       </main>
       <footer className="site-footer">

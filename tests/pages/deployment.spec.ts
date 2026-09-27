@@ -20,6 +20,16 @@ test("Pages assets, language switching and reloadable routes", async ({
   );
   await expect(page.getByText("Explore the sample account")).toHaveCount(0);
   await expect(page.locator(".demo-banner")).toHaveCount(0);
+  await page.getByRole("link", { name: "Skip to content" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#main")).toBeFocused();
+  await expect(page).toHaveURL(/#\/en$/);
+  await page.getByRole("link", { name: "Our approach", exact: true }).click();
+  await expect(page).toHaveURL(/#\/en#approach$/);
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(
+    "Your next step.",
+  );
+  await page.getByRole("link", { name: "Linde — Home" }).first().click();
   const hero = page.locator('img[src*="pathway.svg"]');
   await expect(hero).toBeVisible();
   expect(
